@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Snake - Play the Retro Snake Game</title>
+  <meta name="description" content="Play the classic retro mobile Snake game in your web browser! Eat the food, avoid walls and your own tail.">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0, shrink-to-fit=no, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Default: Cyber Neon (Electric Cyan on Deep Navy - No more green!) */
+      --bg-color: #0b111e;
+      --board-color: #111d33;
+      --board-shadow: rgba(0, 229, 255, 0.2);
+      --snake-color: #00e5ff;
+      --snake-dead: rgba(0, 229, 255, 0.25);
+      --text-color: #00e5ff;
+      --border-color: #00e5ff;
+    }
+
+    [data-theme="amber"] {
+      /* Retro CRT Amber Gold */
+      --bg-color: #1a1207;
+      --board-color: #271a09;
+      --board-shadow: rgba(255, 176, 0, 0.22);
+      --snake-color: #ffb000;
+      --snake-dead: rgba(255, 176, 0, 0.25);
+      --text-color: #ffb000;
+      --border-color: #ffb000;
+    }
+
+    [data-theme="sunset"] {
+      /* Synthwave / Neon Pink & Violet */
+      --bg-color: #140920;
+      --board-color: #210d36;
+      --board-shadow: rgba(255, 42, 109, 0.25);
+      --snake-color: #ff2a6d;
+      --snake-dead: rgba(255, 42, 109, 0.25);
+      --text-color: #05d9e8;
+      --border-color: #ff2a6d;
+    }
+
+    [data-theme="crimson"] {
+      /* Crimson / Ruby Arcade */
+      --bg-color: #180c0c;
+      --board-color: #281212;
+      --board-shadow: rgba(255, 59, 48, 0.25);
+      --snake-color: #ff3b30;
+      --snake-dead: rgba(255, 59, 48, 0.25);
+      --text-color: #ff5247;
+      --border-color: #ff5247;
+    }
+
+    [data-theme="mono"] {
+      /* Modern Minimalist Slate & White */
+      --bg-color: #0f172a;
+      --board-color: #1e293b;
+      --board-shadow: rgba(255, 255, 255, 0.12);
+      --snake-color: #f8fafc;
+      --snake-dead: rgba(248, 250, 252, 0.25);
+      --text-color: #f8fafc;
+      --border-color: #f8fafc;
+    }
+
+    [data-theme="nokia"] {
+      /* Classic Nokia Olive Green (Original) */
+      --bg-color: #9bba5a;
+      --board-color: #ac6;
+      --board-shadow: rgba(48, 80, 0, 0.3);
+      --snake-color: rgba(0, 0, 0, 0.75);
+      --snake-dead: rgba(0, 0, 0, 0.3);
+      --text-color: rgba(0, 0, 0, 0.75);
+      --border-color: rgba(0, 0, 0, 0.75);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      outline: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'VT323', monospace;
+      text-transform: uppercase;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      touch-action: none;
+    }
+
+    /* Top Controls Bar */
+    .top-bar {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 24px;
+      letter-spacing: 1px;
+      opacity: 0.85;
+    }
+
+    .brand svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--text-color);
+    }
+
+    .actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .theme-picker {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      border: 2px solid var(--border-color);
+      border-radius: 20px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .theme-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: inline-block;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .theme-dot:hover {
+      transform: scale(1.25);
+    }
+
+    .theme-dot.active {
+      border-color: #ffffff;
+      transform: scale(1.2);
+      box-shadow: 0 0 8px #ffffff;
+    }
+
+    .dot-cyber { background-color: #00e5ff; }
+    .dot-amber { background-color: #ffb000; }
+    .dot-sunset { background-color: #ff2a6d; }
+    .dot-crimson { background-color: #ff3b30; }
+    .dot-mono { background-color: #f8fafc; }
+    .dot-nokia { background-color: #9bba5a; }
+
+    .btn-icon {
+      background: none;
+      border: 2px solid var(--border-color);
+      border-radius: 6px;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.15s, background-color 0.15s, transform 0.1s;
+    }
+
+    .btn-icon:hover {
+      opacity: 1;
+      background-color: rgba(0, 0, 0, 0.08);
+    }
+
+    .btn-icon:active {
+      transform: scale(0.92);
+    }
+
+    .btn-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--text-color);
+    }
+
+    /* Game Container */
+    .game-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform-origin: center center;
+    }
+
+    .game {
+      position: relative;
+      width: 588px;
+      height: 420px;
+    }
+
+    .board {
+      width: 588px;
+      height: 420px;
+      outline: 4px solid var(--border-color);
+      box-shadow: inset 0 0 60px var(--board-shadow);
+      background-color: var(--board-color);
+      cursor: pointer;
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(21, 28px);
+      grid-template-rows: repeat(15, 28px);
+      transition: background-color 0.25s ease;
+    }
+
+    .cell {
+      width: 28px;
+      height: 28px;
+    }
+
+    .cell.snake {
+      background-color: var(--snake-color);
+      border-radius: 6px;
+      transition: background-color 0.1s;
+    }
+
+    .cell.snake-head {
+      border-radius: 8px;
+    }
+
+    .cell.food {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' fill='%23ff3355' d='M8.1 5.95l-1.15-.3-1.05.3-.3 1.1.3 1.05 1.1.3 1.1-.3.3-1.1-.3-1.05zm2.35-2.25l1.899.45c.434 0 .834.15 1.2.45.301.333.451.7.451 1.1V8.3c-.033.434-.2.816-.5 1.15-.333.3-.717.45-1.15.45l-1.899.5-.551 2.05c0 .399-.15.767-.45 1.1-.3.3-.667.45-1.1.45H5.7c-.4 0-.767-.15-1.1-.45-.333-.333-.483-.7-.45-1.1l-.55-2L1.65 10a2.213 2.213 0 0 1-1.2-.55c-.3-.3-.45-.667-.45-1.1v-2.2-.45c0-.4.183-.767.55-1.1.267-.3.633-.45 1.1-.45L3.6 3.6l.5-1.95c0-.2.017-.383.05-.55a.958.958 0 0 1 .4-.55C4.85.183 5.233 0 5.7 0h2.2c.1 0 .234.017.4.05.434 0 .816.167 1.15.5.166.133.283.317.35.55.033.167.066.35.1.55l.55 2.05z'/%3E%3C/svg%3E");
+      background-size: 100% 100%;
+      opacity: 0.95;
+      filter: drop-shadow(0 0 6px rgba(255, 51, 85, 0.7));
+      animation: appear 200ms cubic-bezier(0.5, 1, 0, 1.6), spin 3.5s cubic-bezier(0.2, 0.6, 0.4, 1) 200ms;
+    }
+
+    @keyframes appear {
+      from { transform: scale(0.1); }
+      to { transform: scale(1); }
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Game State Visuals */
+    .game.intro .board,
+    .game.countdown .board {
+      cursor: auto;
+    }
+
+    .game.intro .cell:nth-child(87),
+    .game.intro .cell:nth-child(103) {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' fill='%23ff3355' d='M8.1 5.95l-1.15-.3-1.05.3-.3 1.1.3 1.05 1.1.3 1.1-.3.3-1.1-.3-1.05zm2.35-2.25l1.899.45c.434 0 .834.15 1.2.45.301.333.451.7.451 1.1V8.3c-.033.434-.2.816-.5 1.15-.333.3-.717.45-1.15.45l-1.899.5-.551 2.05c0 .399-.15.767-.45 1.1-.3.3-.667.45-1.1.45H5.7c-.4 0-.767-.15-1.1-.45-.333-.333-.483-.7-.45-1.1l-.55-2L1.65 10a2.213 2.213 0 0 1-1.2-.55c-.3-.3-.45-.667-.45-1.1v-2.2-.45c0-.4.183-.767.55-1.1.267-.3.633-.45 1.1-.45L3.6 3.6l.5-1.95c0-.2.017-.383.05-.55a.958.958 0 0 1 .4-.55C4.85.183 5.233 0 5.7 0h2.2c.1 0 .234.017.4.05.434 0 .816.167 1.15.5.166.133.283.317.35.55.033.167.066.35.1.55l.55 2.05z'/%3E%3C/svg%3E");
+      background-size: 100% 100%;
+      opacity: 0.85;
+      filter: drop-shadow(0 0 6px rgba(255, 51, 85, 0.7));
+      animation: spin 2s linear infinite;
+    }
+
+    .game.paused .cell.snake,
+    .game.ended .cell.snake {
+      background-color: var(--snake-dead);
+    }
+
+    .game.paused .cell.food {
+      animation-play-state: paused;
+      opacity: 0.3;
+    }
+
+    .game.ended .cell.food {
+      animation: none;
+      opacity: 0.3;
+    }
+
+    /* Menus & Overlays */
+    nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      z-index: 10;
+      pointer-events: auto;
+    }
+
+    .game.intro nav {
+      display: flex;
+    }
+
+    nav h1 {
+      font-size: 120px;
+      font-weight: normal;
+      line-height: 0.9;
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+      pointer-events: none;
+    }
+
+    nav p.choose {
+      font-size: 32px;
+      pointer-events: none;
+      margin-bottom: 24px;
+      opacity: 0.9;
+    }
+
+    .levels-container {
+      display: flex;
+      gap: 20px;
+    }
+
+    nav .level-btn {
+      font-family: inherit;
+      background: none;
+      border: 3px solid transparent;
+      color: var(--text-color);
+      font-size: 44px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      line-height: 1;
+      transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    nav .level-btn:hover,
+    nav .level-btn:active {
+      background-color: var(--border-color);
+      color: var(--board-color);
+    }
+
+    /* Headings for Countdown and End states */
+    .overlay-heading {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 120px;
+      font-weight: normal;
+      text-align: center;
+      pointer-events: none;
+      z-index: 10;
+      line-height: 1;
+    }
+
+    .game.countdown .overlay-heading.countdown {
+      display: flex;
+      font-size: 160px;
+    }
+
+    .game.ended .overlay-heading.ended {
+      display: flex;
+    }
+
+    .game.ended.best .overlay-heading.ended {
+      display: none;
+    }
+
+    .game.ended.best .overlay-heading.best {
+      display: flex;
+    }
+
+    .game.paused .overlay-heading.paused {
+      display: flex;
+      font-size: 90px;
+    }
+
+    /* Score and Level Info Bar */
+    .info-bar {
+      width: 588px;
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 38px;
+      line-height: 1;
+    }
+
+    .game.intro ~ .info-bar {
+      visibility: hidden;
+    }
+
+    .info-bar .left {
+      display: flex;
+      gap: 12px;
+    }
+
+    .info-bar .right {
+      display: flex;
+      gap: 16px;
+    }
+
+    .info-bar .btn-share {
+      display: none;
+      background: none;
+      border: 2px solid var(--border-color);
+      color: var(--text-color);
+      font-family: inherit;
+      font-size: 28px;
+      padding: 4px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      animation: appear 200ms cubic-bezier(0.5, 1, 0, 1.6);
+    }
+
+    .btn-share:hover {
+      background-color: var(--border-color);
+      color: var(--board-color);
+    }
+
+    .game.ended.has-score ~ .info-bar .btn-share {
+      display: block;
+    }
+
+    /* Virtual D-Pad for Mobile & Touch */
+    .dpad-container {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(2, 52px);
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .dpad-btn {
+      background: rgba(0, 0, 0, 0.1);
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-color);
+      font-family: inherit;
+      font-size: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .dpad-btn:active {
+      background-color: var(--border-color);
+      color: var(--board-color);
+    }
+
+    .dpad-up { grid-column: 2; grid-row: 1; }
+    .dpad-left { grid-column: 1; grid-row: 2; }
+    .dpad-down { grid-column: 2; grid-row: 2; }
+    .dpad-right { grid-column: 3; grid-row: 2; }
+
+    /* Keyboard Help Footer */
+    .footer-help {
+      position: absolute;
+      bottom: 12px;
+      font-size: 20px;
+      opacity: 0.7;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+
+    /* Responsive scaling for small screens */
+    @media (max-width: 640px) or (max-height: 600px) {
+      .game-wrapper {
+        transform: scale(0.68);
+      }
+      .footer-help {
+        display: none;
+      }
+    }
+
+    @media (max-width: 440px) or (max-height: 480px) {
+      .game-wrapper {
+        transform: scale(0.52);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar with brand and setting buttons -->
+  <header class="top-bar">
+    <div class="brand">
+      <svg viewBox="0 0 512 512">
+        <path d="M361 360.95L191 290.5v57.1l-40 16.6V151.05l170 70.3v-57.2l1-.4.1-.05 38.9-15.9"></path>
+      </svg>
+      <span>Retro Snake</span>
+    </div>
+    <div class="actions-bar">
+      <!-- Theme Color Dot Picker -->
+      <div class="theme-picker" title="Pick Game Theme Color">
+        <span class="theme-dot dot-cyber" data-theme="default" title="Cyber Neon (Default)"></span>
+        <span class="theme-dot dot-amber" data-theme="amber" title="Amber Gold"></span>
+        <span class="theme-dot dot-sunset" data-theme="sunset" title="Sunset Pink"></span>
+        <span class="theme-dot dot-crimson" data-theme="crimson" title="Crimson Red"></span>
+        <span class="theme-dot dot-mono" data-theme="mono" title="Minimal Slate"></span>
+        <span class="theme-dot dot-nokia" data-theme="nokia" title="Classic Nokia Green"></span>
+      </div>
+
+      <!-- Theme Switcher Button -->
+      <button class="btn-icon" id="theme-btn" title="Cycle Next Theme (T)" aria-label="Toggle Theme">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"></circle>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+
+      <!-- Mute Toggle -->
+      <button class="btn-icon" id="mute-btn" title="Mute/Unmute (M)" aria-label="Mute Audio">
+        <svg id="sound-icon-on" viewBox="0 0 100 100">
+          <polygon points="14,38 14,62 31,62 55,86 55,14 31,38"></polygon>
+          <path class="wave" d="M67,34 l-4,4 c6,6 6,17 0,23 l4,4 c8,-8 8,-23 0,-31 z"></path>
+          <path class="wave" d="M76,25 l-4,4 c11,11 11,29 0,40 l4,4 c13,-13 13,-35 0,-48 z"></path>
+        </svg>
+        <svg id="sound-icon-off" style="display:none;" viewBox="0 0 100 100">
+          <polygon points="14,38 14,62 31,62 55,86 55,14 31,38"></polygon>
+          <line x1="65" y1="35" x2="85" y2="65" stroke="currentColor" stroke-width="6" stroke-linecap="round"></line>
+          <line x1="85" y1="35" x2="65" y2="65" stroke="currentColor" stroke-width="6" stroke-linecap="round"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Game Canvas & Components -->
+  <main class="game-wrapper">
+    <div class="game intro" id="game-container">
+      <!-- Main Menu Navigation -->
+      <nav id="game-nav">
+        <h1>Snake</h1>
+        <p class="choose">Choose level:</p>
+        <div class="levels-container">
+          <button class="level-btn" data-level="0">Slug</button>
+          <button class="level-btn" data-level="1">Worm</button>
+          <button class="level-btn" data-level="2">Python</button>
+        </div>
+      </nav>
+
+      <!-- Overlay Headings for Countdown, Game Over, Paused -->
+      <h2 class="overlay-heading countdown" id="countdown-heading">3</h2>
+      <h2 class="overlay-heading ended" id="ended-heading">Game over!</h2>
+      <h2 class="overlay-heading best" id="best-heading">Best score!</h2>
+      <h2 class="overlay-heading paused" id="paused-heading">Paused</h2>
+
+      <!-- 21 x 15 Grid Board -->
+      <div class="board" id="board" title="Click to Pause / Resume or Restart"></div>
+    </div>
+
+    <!-- Status / Info Bar below board -->
+    <div class="info-bar" id="info-bar">
+      <div class="left">
+        <span>Score:</span>
+        <span id="score-display">0</span>
+      </div>
+      <button class="btn-share" id="share-btn">Share Score</button>
+      <div class="right">
+        <span id="level-display">Slug</span>
+        <span>Best:</span>
+        <span id="best-display">0</span>
+      </div>
+    </div>
+
+    <!-- Virtual D-pad for touch / mobile screens -->
+    <div class="dpad-container" id="dpad">
+      <button class="dpad-btn dpad-up" data-dir="UP">▲</button>
+      <button class="dpad-btn dpad-left" data-dir="LEFT">◀</button>
+      <button class="dpad-btn dpad-down" data-dir="DOWN">▼</button>
+      <button class="dpad-btn dpad-right" data-dir="RIGHT">▶</button>
+    </div>
+  </main>
+
+  <footer class="footer-help">
+    Arrows / WASD: Move &bull; Space / P: Pause &bull; M: Mute &bull; T: Theme &bull; Click Board: Restart
+  </footer>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // --- Sound Synthesis Engine (Procedural Web Audio API) ---
+      class SoundEngine {
+        constructor() {
+          this.ctx = null;
+          this.muted = localStorage.getItem('snake_muted') === 'true';
+        }
+
+        init() {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        }
+
+        playTone(freq, type, duration, gainVal, endFreq) {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const now = this.ctx.currentTime;
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, now);
+            if (endFreq) {
+              osc.frequency.exponentialRampToValueAtTime(Math.max(endFreq, 10), now + duration);
+            }
+
+            gain.gain.setValueAtTime(gainVal, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + duration);
+          } catch (e) {}
+        }
+
+        playLow() {
+          this.playTone(240, 'square', 0.08, 0.15);
+        }
+
+        playHigh() {
+          this.playTone(520, 'square', 0.1, 0.18);
+        }
+
+        playDie() {
+          this.playTone(320, 'sawtooth', 0.38, 0.22, 50);
+        }
+
+        toggleMute() {
+          this.muted = !this.muted;
+          try {
+            localStorage.setItem('snake_muted', this.muted.toString());
+          } catch (e) {}
+          return this.muted;
+        }
+      }
+
+      // --- Game Constants & State Enum ---
+      const WIDTH = 21;
+      const HEIGHT = 15;
+
+      const DIR = { UP: 0, DOWN: 1, LEFT: 2, RIGHT: 3 };
+      const STATE = {
+        INTRO: 'intro',
+        COUNTDOWN: 'countdown',
+        PLAYING: 'playing',
+        PAUSED: 'paused',
+        ENDED: 'ended'
+      };
+
+      const LEVELS = [
+        { name: 'Slug', speed: 150 },
+        { name: 'Worm', speed: 100 },
+        { name: 'Python', speed: 50 }
+      ];
+
+      // --- Coordinate Point ---
+      class Point {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+      }
+
+      // --- Snake Entity ---
+      class Snake {
+        constructor() {
+          this.reset();
+        }
+
+        reset() {
+          this.direction = DIR.DOWN;
+          this.nextDirection = DIR.DOWN;
+          // Initial 3 segments starting at column 10, rows 2, 1, 0
+          this.cells = [new Point(10, 2), new Point(10, 1), new Point(10, 0)];
+        }
+
+        contains(x, y) {
+          for (let i = 0; i < this.cells.length; i++) {
+            if (this.cells[i].x === x && this.cells[i].y === y) return true;
+          }
+          return false;
+        }
+
+        render(cellsGrid, applyClass) {
+          for (let i = 0; i < this.cells.length; i++) {
+            const pt = this.cells[i];
+            if (pt.x >= 0 && pt.x < WIDTH && pt.y >= 0 && pt.y < HEIGHT) {
+              const el = cellsGrid[pt.x][pt.y];
+              if (applyClass) {
+                el.classList.add('snake');
+                if (i === 0) el.classList.add('snake-head');
+              } else {
+                el.classList.remove('snake', 'snake-head');
+              }
+            }
+          }
+        }
+      }
+
+      // --- Food Entity ---
+      class Food {
+        constructor() {
+          this.x = 0;
+          this.y = 0;
+          this.score = 100;
+        }
+
+        remove(cellsGrid) {
+          if (cellsGrid[this.x] && cellsGrid[this.x][this.y]) {
+            cellsGrid[this.x][this.y].classList.remove('food');
+          }
+        }
+
+        generate(cellsGrid, snake) {
+          if (snake.cells.length >= WIDTH * HEIGHT - 1) return;
+
+          let rx, ry;
+          do {
+            rx = Math.floor(Math.random() * WIDTH);
+            ry = Math.floor(Math.random() * HEIGHT);
+          } while (snake.contains(rx, ry));
+
+          this.x = rx;
+          this.y = ry;
+          this.score = 100;
+          cellsGrid[rx][ry].classList.add('food');
+        }
+      }
+
+      // --- Main Game Controller ---
+      class GameController {
+        constructor() {
+          this.sound = new SoundEngine();
+          this.snake = new Snake();
+          this.food = new Food();
+
+          this.currentState = STATE.INTRO;
+          this.currentLevelIndex = 1; // Default to 'Worm'
+          this.score = 0;
+          this.countdownCount = 3;
+
+          this.gameLoopTimer = null;
+          this.animFrameId = null;
+
+          // DOM Elements
+          this.container = document.getElementById('game-container');
+          this.boardEl = document.getElementById('board');
+          this.scoreDisplay = document.getElementById('score-display');
+          this.bestDisplay = document.getElementById('best-display');
+          this.levelDisplay = document.getElementById('level-display');
+          this.shareBtn = document.getElementById('share-btn');
+          this.countdownHeading = document.getElementById('countdown-heading');
+          this.themeBtn = document.getElementById('theme-btn');
+          this.muteBtn = document.getElementById('mute-btn');
+          this.soundIconOn = document.getElementById('sound-icon-on');
+          this.soundIconOff = document.getElementById('sound-icon-off');
+
+          this.grid = []; // 2D array [x][y] of DOM cell divs
+
+          this.touchStart = { x: 0, y: 0 };
+          this.themes = ['default', 'amber', 'sunset', 'crimson', 'mono', 'nokia'];
+          const savedTheme = localStorage.getItem('snake_theme') || 'default';
+          this.currentThemeIndex = this.themes.indexOf(savedTheme);
+          if (this.currentThemeIndex === -1) this.currentThemeIndex = 0;
+
+          this.initGrid();
+          this.bindEvents();
+          this.applyTheme(this.themes[this.currentThemeIndex]);
+          this.updateMuteUI();
+          this.updateBestScoreUI();
+        }
+
+        initGrid() {
+          this.boardEl.innerHTML = '';
+          for (let x = 0; x < WIDTH; x++) {
+            this.grid[x] = [];
+          }
+
+          // Generate 315 cell divs (21 x 15)
+          for (let y = 0; y < HEIGHT; y++) {
+            for (let x = 0; x < WIDTH; x++) {
+              const cell = document.createElement('div');
+              cell.className = 'cell';
+              this.grid[x][y] = cell;
+              this.boardEl.appendChild(cell);
+            }
+          }
+        }
+
+        setState(newState) {
+          this.container.classList.remove(this.currentState);
+          this.container.classList.add(newState);
+          this.currentState = newState;
+        }
+
+        getBestScore() {
+          try {
+            return parseInt(localStorage.getItem('snake_score_' + this.currentLevelIndex), 10) || 0;
+          } catch (e) {
+            return 0;
+          }
+        }
+
+        saveBestScore(val) {
+          try {
+            localStorage.setItem('snake_score_' + this.currentLevelIndex, val.toString());
+          } catch (e) {}
+        }
+
+        updateScoreUI() {
+          this.scoreDisplay.textContent = this.score.toString();
+        }
+
+        updateBestScoreUI() {
+          this.bestDisplay.textContent = this.getBestScore().toString();
+          this.levelDisplay.textContent = LEVELS[this.currentLevelIndex].name;
+        }
+
+        updateMuteUI() {
+          if (this.sound.muted) {
+            this.soundIconOn.style.display = 'none';
+            this.soundIconOff.style.display = 'block';
+          } else {
+            this.soundIconOn.style.display = 'block';
+            this.soundIconOff.style.display = 'none';
+          }
+        }
+
+        startCountdown(levelIdx) {
+          if (this.currentState !== STATE.INTRO) return;
+          this.currentLevelIndex = levelIdx;
+          this.score = 0;
+          this.updateScoreUI();
+          this.updateBestScoreUI();
+
+          this.container.classList.remove('best', 'has-score');
+          this.setState(STATE.COUNTDOWN);
+          this.countdownCount = 4;
+          this.stepCountdown();
+        }
+
+        stepCountdown() {
+          this.countdownCount--;
+          if (this.countdownCount > 0) {
+            this.sound.playLow();
+            this.countdownHeading.textContent = this.countdownCount.toString();
+            setTimeout(() => this.stepCountdown(), 500);
+          } else {
+            this.sound.playHigh();
+            this.countdownHeading.textContent = 'GO!';
+            setTimeout(() => this.startGameplay(), 500);
+          }
+        }
+
+        startGameplay() {
+          this.setState(STATE.PLAYING);
+          this.snake.reset();
+          this.food.generate(this.grid, this.snake);
+          this.runLoop();
+        }
+
+        runLoop() {
+          const speed = LEVELS[this.currentLevelIndex].speed;
+          this.gameLoopTimer = setTimeout(() => {
+            this.animFrameId = requestAnimationFrame(() => this.stepGame());
+          }, speed);
+        }
+
+        stepGame() {
+          if (this.currentState !== STATE.PLAYING) return;
+
+          // Remove snake class from old positions
+          this.snake.render(this.grid, false);
+
+          // Move body segments forward
+          for (let i = this.snake.cells.length - 1; i > 0; i--) {
+            this.snake.cells[i].x = this.snake.cells[i - 1].x;
+            this.snake.cells[i].y = this.snake.cells[i - 1].y;
+          }
+
+          // Advance head in next direction
+          switch (this.snake.nextDirection) {
+            case DIR.LEFT:  this.snake.cells[0].x--; break;
+            case DIR.RIGHT: this.snake.cells[0].x++; break;
+            case DIR.UP:    this.snake.cells[0].y--; break;
+            case DIR.DOWN:  this.snake.cells[0].y++; break;
+          }
+          this.snake.direction = this.snake.nextDirection;
+
+          const head = this.snake.cells[0];
+
+          // Check Wall Collisions
+          if (head.x < 0 || head.x >= WIDTH || head.y < 0 || head.y >= HEIGHT) {
+            this.handleDeath();
+            return;
+          }
+
+          // Check Self Collisions
+          for (let i = 1; i < this.snake.cells.length; i++) {
+            if (head.x === this.snake.cells[i].x && head.y === this.snake.cells[i].y) {
+              this.handleDeath();
+              return;
+            }
+          }
+
+          // Check Food Consumption
+          if (head.x === this.food.x && head.y === this.food.y) {
+            const tail = this.snake.cells[this.snake.cells.length - 1];
+            this.snake.cells.push(new Point(tail.x, tail.y));
+
+            this.score += this.food.score;
+            this.updateScoreUI();
+            this.sound.playHigh();
+
+            this.food.remove(this.grid);
+            this.food.generate(this.grid, this.snake);
+          } else if (this.food.score > 5) {
+            // Decaying bonus points: drops by 5 per step down to 5
+            this.food.score -= 5;
+          }
+
+          // Render snake at new positions
+          this.snake.render(this.grid, true);
+
+          // Next loop iteration
+          this.runLoop();
+        }
+
+        handleDeath() {
+          clearTimeout(this.gameLoopTimer);
+          cancelAnimationFrame(this.animFrameId);
+
+          this.setState(STATE.ENDED);
+          this.sound.playDie();
+
+          const best = this.getBestScore();
+          if (this.score > best) {
+            this.saveBestScore(this.score);
+            this.container.classList.add('best');
+          }
+          if (this.score > 0) {
+            this.container.classList.add('has-score');
+          }
+          this.updateBestScoreUI();
+        }
+
+        togglePause() {
+          if (this.currentState === STATE.PLAYING) {
+            this.setState(STATE.PAUSED);
+            clearTimeout(this.gameLoopTimer);
+            cancelAnimationFrame(this.animFrameId);
+          } else if (this.currentState === STATE.PAUSED) {
+            this.setState(STATE.PLAYING);
+            this.runLoop();
+          }
+        }
+
+        returnToIntro() {
+          clearTimeout(this.gameLoopTimer);
+          cancelAnimationFrame(this.animFrameId);
+          this.snake.render(this.grid, false);
+          this.food.remove(this.grid);
+          this.snake.reset();
+          this.container.classList.remove('best', 'has-score');
+          this.setState(STATE.INTRO);
+        }
+
+        shareScore() {
+          const text = `I scored ${this.score} on ${LEVELS[this.currentLevelIndex].name} level in Retro Snake!`;
+          if (navigator.share) {
+            navigator.share({
+              title: 'Retro Snake Game',
+              text: text,
+              url: window.location.href
+            }).catch(() => {});
+          } else {
+            navigator.clipboard.writeText(text).then(() => {
+              alert('Score copied to clipboard: ' + text);
+            }).catch(() => {
+              alert(text);
+            });
+          }
+        }
+
+        applyTheme(theme) {
+          if (theme === 'default') {
+            document.documentElement.removeAttribute('data-theme');
+          } else {
+            document.documentElement.setAttribute('data-theme', theme);
+          }
+          this.currentThemeIndex = this.themes.indexOf(theme);
+          if (this.currentThemeIndex === -1) this.currentThemeIndex = 0;
+          try {
+            localStorage.setItem('snake_theme', theme);
+          } catch (e) {}
+
+          // Update active dot in picker
+          document.querySelectorAll('.theme-dot').forEach(dot => {
+            dot.classList.toggle('active', dot.dataset.theme === theme);
+          });
+        }
+
+        cycleTheme() {
+          const nextIndex = (this.currentThemeIndex + 1) % this.themes.length;
+          this.applyTheme(this.themes[nextIndex]);
+        }
+
+        setDirection(dir) {
+          if (this.currentState !== STATE.PLAYING) return;
+          if (dir === DIR.UP && this.snake.direction !== DIR.DOWN) {
+            this.snake.nextDirection = DIR.UP;
+          } else if (dir === DIR.DOWN && this.snake.direction !== DIR.UP) {
+            this.snake.nextDirection = DIR.DOWN;
+          } else if (dir === DIR.LEFT && this.snake.direction !== DIR.RIGHT) {
+            this.snake.nextDirection = DIR.LEFT;
+          } else if (dir === DIR.RIGHT && this.snake.direction !== DIR.LEFT) {
+            this.snake.nextDirection = DIR.RIGHT;
+          }
+        }
+
+        bindEvents() {
+          // Keyboard controls
+          window.addEventListener('keydown', (e) => {
+            switch (e.keyCode) {
+              case 38: // Up arrow
+              case 87: // W
+                this.setDirection(DIR.UP);
+                break;
+              case 40: // Down arrow
+              case 83: // S
+                this.setDirection(DIR.DOWN);
+                break;
+              case 37: // Left arrow
+              case 65: // A
+                this.setDirection(DIR.LEFT);
+                break;
+              case 39: // Right arrow
+              case 68: // D
+                this.setDirection(DIR.RIGHT);
+                break;
+              case 32: // Space
+              case 80: // P
+                this.togglePause();
+                break;
+              case 77: // M (mute)
+                this.sound.toggleMute();
+                this.updateMuteUI();
+                break;
+              case 84: // T (theme)
+                this.cycleTheme();
+                break;
+            }
+          });
+
+          // Level Selection Buttons
+          document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              const lvl = parseInt(e.currentTarget.dataset.level, 10);
+              this.startCountdown(lvl);
+            });
+          });
+
+          // Board Click Handling
+          this.boardEl.addEventListener('click', () => {
+            if (this.currentState === STATE.PLAYING || this.currentState === STATE.PAUSED) {
+              this.togglePause();
+            } else if (this.currentState === STATE.ENDED) {
+              this.returnToIntro();
+            }
+          });
+
+          // Audio Mute Button
+          this.muteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.sound.toggleMute();
+            this.updateMuteUI();
+          });
+
+          // Theme Switcher Button
+          this.themeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.cycleTheme();
+          });
+
+          // Theme Color Dot Picker
+          document.querySelectorAll('.theme-dot').forEach(dot => {
+            dot.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const theme = e.currentTarget.dataset.theme;
+              this.applyTheme(theme);
+            });
+          });
+
+          // Share Button
+          this.shareBtn.addEventListener('click', () => {
+            this.shareScore();
+          });
+
+          // Virtual D-pad for mobile/touch
+          document.querySelectorAll('.dpad-btn').forEach(btn => {
+            const handleDir = (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const dirName = btn.dataset.dir;
+              if (DIR[dirName] !== undefined) {
+                this.setDirection(DIR[dirName]);
+              }
+            };
+            btn.addEventListener('touchstart', handleDir, { passive: false });
+            btn.addEventListener('mousedown', handleDir);
+          });
+
+          // Touch Swipe Detection
+          window.addEventListener('touchstart', (e) => {
+            if (e.touches && e.touches.length > 0) {
+              this.touchStart.x = e.touches[0].screenX;
+              this.touchStart.y = e.touches[0].screenY;
+            }
+          }, { passive: true });
+
+          window.addEventListener('touchmove', (e) => {
+            if (this.currentState !== STATE.PLAYING || !e.changedTouches || e.changedTouches.length === 0) return;
+
+            const dx = e.changedTouches[0].screenX - this.touchStart.x;
+            const dy = e.changedTouches[0].screenY - this.touchStart.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 20) return; // Threshold to prevent jitter
+
+            this.touchStart.x = e.changedTouches[0].screenX;
+            this.touchStart.y = e.changedTouches[0].screenY;
+
+            const angle = (Math.atan2(dy, dx) / Math.PI * 180 + 360) % 360;
+
+            if (angle >= 45 && angle < 135) {
+              this.setDirection(DIR.DOWN);
+            } else if (angle >= 135 && angle < 225) {
+              this.setDirection(DIR.LEFT);
+            } else if (angle >= 225 && angle < 315) {
+              this.setDirection(DIR.UP);
+            } else {
+              this.setDirection(DIR.RIGHT);
+            }
+          }, { passive: true });
+        }
+      }
+
+      // Initialize game when DOM is loaded
+      window.addEventListener('DOMContentLoaded', () => {
+        window.game = new GameController();
+      });
+    })();
+  </script>
+</body>
+</html>
+
